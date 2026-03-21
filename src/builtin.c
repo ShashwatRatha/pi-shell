@@ -1,4 +1,4 @@
-#include "../include/builtins.h"
+#include "builtins.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>

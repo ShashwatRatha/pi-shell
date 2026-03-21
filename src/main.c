@@ -1,3 +1,5 @@
+#include <asm-generic/errno-base.h>
+#include <errno.h>
 #include <linux/limits.h>
 #include <signal.h>
 #include <stddef.h>
@@ -6,28 +8,29 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/wait.h>
-#include "../include/token.h"
-#include "../include/builtins.h"
+#include "builtins.h"
 
-#define MAX_ARG_LEN 21
+static inline void printPrompt();
 
-void handle_int(int sig) {
-    write(STDIN_FILENO, "\n", 2); // have to fix handler to reprint prompt by itself
+static void handle_int(int sig) {
+    write(STDOUT_FILENO, "\n", 1); // have to fix handler to reprint prompt by itself
 }
 
 int main(){
     signal(SIGINT, handle_int);
 
     while (1) {
-        char* buf = getcwd(NULL, 0);
-        dprintf(STDOUT_FILENO, "\033[1;93mfishy@pish\033[0m:\033[1;34m[%s]\033[0m:%% ", buf);
-        free(buf);
-
+        printPrompt();
         char* cmd = NULL;
         size_t n = 0;
         if (getline(&cmd, &n, stdin) == -1) {
+            if (errno == EINTR) {
+                free(cmd);
+                cmd = NULL;
+                continue;
+            }
             perror("input failure");
-            exit(INP_FAILURE);
+            _exit(-1);
         }
 
         size_t j = 0;
@@ -35,30 +38,45 @@ int main(){
             j++;
         cmd[j] = 0;
 
-        if (cmd[0] == 0) 
+        if (cmd[0] == 0) {
+            free(cmd);
             continue;
-        
-        char* argv[MAX_ARG_LEN];
-        size_t num;
-        tokenise(cmd, argv, &num);
+        }
 
-        if (execBuiltin(argv) == -1) { // IF NOT A BUILTIN
-            pid_t pid = fork();
-
-            if (pid == 0) {
-                if(execvp(argv[0], argv) == -1){
-                    write(STDERR_FILENO, "pish: ", 7);
-                    perror(argv[0]);
-                    exit(EXEC_FAILURE);
-                }
-                exit(EXEC_SUCCESS);
-            }
-
-            else {
-                waitpid(pid, NULL, 0);
-            }
+        int ret = execute(cmd);
+        if (ret == ALLOC_FAILURE) {
+            free(cmd);
+            return EXIT_FAILURE;
         }
 
         free(cmd);
+    } 
+}
+
+// modifies the shown working directory to show ~ in place of /home/user
+static inline void printPrompt() {
+    char* buf = getcwd(NULL, 0);
+    size_t dirLen = strlen(buf);
+
+    char check[7];
+    memcpy(check, buf, 6);
+    check[6] = 0;
+
+    if (!strcmp("/home/", check)) {
+        char* ptr = buf + 6;
+        while (*ptr && *ptr != '/')
+            ptr++;
+        size_t skip = ptr - buf;
+        char* tmp = malloc((dirLen - skip + 2) * sizeof *tmp);
+
+        tmp[0] = '~';
+        memcpy(tmp + 1, buf + skip, dirLen - skip);
+        tmp[dirLen - skip + 1] = 0;
+
+        free(buf);
+        buf = tmp;
     }
+
+    dprintf(STDOUT_FILENO, "\033[1;93mfishy@pish\033[0m:\033[1;34m[%s]\033[0m:%% ", buf);
+    free(buf);
 }
