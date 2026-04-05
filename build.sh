@@ -1,0 +1,1 @@
+gcc -o pish src/*.c || clang -o pish src/*.c
