@@ -1,4 +1,5 @@
-#include <asm-generic/errno-base.h>
+#include "exec.h"
+#include "globals.h"
 #include <errno.h>
 #include <linux/limits.h>
 #include <signal.h>
@@ -8,7 +9,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/wait.h>
-#include "builtins.h"
 
 static inline void printPrompt();
 

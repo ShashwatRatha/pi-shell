@@ -1,0 +1,9 @@
+#ifndef GLOBALS_H_
+#define GLOBALS_H_
+
+enum return_vals{
+    SUCCESS, ALLOC_FAILURE, EXEC_FAILURE, INP_FAILURE, 
+    TOK_FAILURE, PIPE_FAILURE, FORK_FAILURE
+};
+
+#endif // INCLUDE_GLOABALS_H_

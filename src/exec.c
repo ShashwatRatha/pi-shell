@@ -1,4 +1,8 @@
-#include "builtins.h"
+#include "exec.h"
+#include "builtin.h"
+#include "command.h"
+#include "parse.h"
+#include "globals.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,6 +10,14 @@
 #include <unistd.h>
 
 #define GRP_INIT 8
+
+#define groupFreeForm ((Commands){group, grp_idx})
+
+typedef struct {
+    Command* group;
+    int size;
+    char bgproc;
+} CommandGrp;
 
 static int execPipeline(CommandGrp);
 
@@ -31,7 +43,7 @@ int execute(char* cmdstr) {
                 grp_size <<= 1;
                 Command* tmp = realloc(group, grp_size * sizeof(*tmp));
                 if (!tmp) {
-                    free(group);
+                    freeCommands(groupFreeForm);
                     return ALLOC_FAILURE;
                 }
                 group = tmp;
@@ -42,13 +54,13 @@ int execute(char* cmdstr) {
 
         CommandGrp cmdgrp = (CommandGrp) {
             .group = group,
-            .size = grp_idx,
-            .bgproc = 0
+                .size = grp_idx,
+                .bgproc = 0
         };
 
         if (dlms.delims[dlm_idx] == BG_PROC)
             cmdgrp.bgproc = 1;
-        
+
         int ret = execPipeline(cmdgrp);
         if (dlm_idx >= dlms.count)
             return SUCCESS;
@@ -57,7 +69,7 @@ int execute(char* cmdstr) {
         else if (dlms.delims[dlm_idx] == OR_OP && ret == SUCCESS)
             return EXEC_FAILURE;
 
-        free(group);
+        freeCommands(groupFreeForm);
     }
 
     return SUCCESS;
@@ -66,7 +78,7 @@ int execute(char* cmdstr) {
 static int execPipeline(CommandGrp cmdgrp) {
     Command* group = cmdgrp.group;
     int num = cmdgrp.size;
-    bool bg = cmdgrp.bgproc;
+    char bg = cmdgrp.bgproc;
 
     int pipefds[num-1][2];
     for (int i = 0; i < num-1; i++)
@@ -80,7 +92,7 @@ static int execPipeline(CommandGrp cmdgrp) {
         pids[i] = -1;
 
     for (int i = 0; i < num; i++) {
-        if (execBuiltin(group[i].argv) != -1)
+        if (execBuiltin(group[i].argv) != EXEC_FAILURE)
             continue;
 
         pid_t pid = fork();
@@ -127,10 +139,9 @@ static int execPipeline(CommandGrp cmdgrp) {
 
     int status = SUCCESS;
     if (!bg) {
-        for (int i = 0; i < num - 1; i++)
+        for (int i = 0; i < num; i++)
             if (pids[i] != -1)
-            waitpid(pids[i], NULL, 0);
-        waitpid(pids[num - 1], &status, 0);
+                waitpid(pids[i], &status, 0);
     }
 
     return status;

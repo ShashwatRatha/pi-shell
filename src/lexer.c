@@ -1,13 +1,20 @@
+#include "token.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
-#include "token.h"
 
 #define TOK_INIT 32
 #define BUF_INIT 32
+
+static const Token op_ref[] = {
+    {REDIR_OUT_OW, (char*)">"}, {REDIR_OUT_APP, (char*)">>"},
+    {REDIR_IN, (char*)"<"}, {HERE_DOC, (char*)"<<"},
+    {PIPE, (char*)"|"}, {OR_OP, (char*)"||"},
+    {BG_PROC, (char*)"&"}, {AND_OP, (char*)"&&"}, {NULL_TYPE, NULL}
+};
 
 typedef enum {
     RST, QTS, WTE, CHR, OPR
@@ -26,7 +33,7 @@ static inline char isChar(char ch) {
 }
 
 TokenArr emitToks(char* str) {
-    Token* tokens = (Token*) malloc((TOK_INIT + 1) * sizeof(Token));
+    Token* tokens = (Token*) malloc((TOK_INIT + 1) * sizeof(*tokens));
     if (!tokens){
         dprintf(STDERR_FILENO, "tokens alloc failed\n");
         return (TokenArr){0, NULL};
@@ -44,7 +51,7 @@ TokenArr emitToks(char* str) {
 
         if (next >= tok_size-1){
             tok_size *= 2;
-            Token* tmp = (Token*) realloc(tokens, (tok_size + 1) * sizeof(Token));
+            Token* tmp = (Token*) realloc(tokens, (tok_size + 1) * sizeof(*tmp));
             if (!tmp){
                 free(tokens);
                 return (TokenArr){0, NULL};
@@ -68,8 +75,8 @@ TokenArr emitToks(char* str) {
             case WTE: {
                           while (isWhite(*curr))
                               *curr = 0, curr++;
-
                           st = RST;
+
                           break;
                       }
             case OPR: {
@@ -103,7 +110,7 @@ TokenArr emitToks(char* str) {
             case CHR: {
                           int idx = (buf_idx == -1 ? 0 : buf_idx);
                           if (buf_idx == -1){
-                              buf = (char*) malloc((BUF_INIT + 1) * sizeof(char));
+                              buf = (char*) malloc((BUF_INIT + 1) * sizeof(*buf));
                               if (buf == NULL)
                                   return (TokenArr){0, NULL};
 
@@ -115,7 +122,7 @@ TokenArr emitToks(char* str) {
                                   buf[idx] = *curr, idx++, curr++;
                               else {
                                   buf_size += (buf_size >> 1);
-                                  char* tmp = realloc(buf, (buf_size + 1) * sizeof(char));
+                                  char* tmp = realloc(buf, (buf_size + 1) * sizeof(*tmp));
                                   if (!tmp){
                                       free(buf);
                                       return (TokenArr){0, NULL};
@@ -138,23 +145,21 @@ TokenArr emitToks(char* str) {
                       }
             case QTS: {
                           curr++;
-                          int idx;
+                          int idx = buf_idx == -1 ? 0 : buf_idx;
                           if (buf_idx == -1){
-                              buf = (char*) malloc((BUF_INIT + 1) * sizeof(char));
+                              buf = (char*) malloc((BUF_INIT + 1) * sizeof(*buf));
                               if (!buf)
                                   return (TokenArr){0, NULL};
 
-                              idx = 0, buf_size = BUF_INIT;
+                              buf_size = BUF_INIT;
                           }
-                          else 
-                              idx = buf_idx;
 
                           while (*curr && *curr != '"') {
                               if (idx < buf_size)
                                   buf[idx] = *curr, idx++, curr++;
                               else {
                                   buf_size += (buf_size >> 1);
-                                  char* tmp = realloc(buf, (buf_size + 1) * sizeof(char));
+                                  char* tmp = realloc(buf, (buf_size + 1) * sizeof(*tmp));
                                   if (tmp == NULL){
                                       free(buf);
                                       return (TokenArr){0, NULL};
@@ -186,7 +191,7 @@ TokenArr emitToks(char* str) {
     }
 
     if (next >= tok_size-1) {
-        Token* tmp = realloc(tokens, (next + 1)*sizeof(Token));
+        Token* tmp = realloc(tokens, (next + 1) * sizeof(*tmp));
         if (!tmp) {
             free(tokens);
             return (TokenArr){0, NULL};

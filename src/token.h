@@ -19,13 +19,6 @@ typedef struct {
     Token* tokens;
 } TokenArr;
 
-static const Token op_ref[] = {
-    {REDIR_OUT_OW, (char*)">"}, {REDIR_OUT_APP, (char*)">>"},
-    {REDIR_IN, (char*)"<"}, {HERE_DOC, (char*)"<<"},
-    {PIPE, (char*)"|"}, {OR_OP, (char*)"||"},
-    {BG_PROC, (char*)"&"}, {AND_OP, (char*)"&&"}, {NULL_TYPE, NULL}
-};
-
 TokenArr emitToks(char* str);
 void freeTokens(Token* toks);
 

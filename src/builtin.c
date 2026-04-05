@@ -1,16 +1,19 @@
-#include "builtins.h"
+#include "globals.h"
+#include "builtin.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#define FAILURE -1
-#define SUCCESS 0
-
 static int Exit(char**);
 static int Cd(char**);
 static int Pwd(char**);
+
+typedef struct {
+    const char* id;
+    int (*fn) (char**);
+} builtin;
 
 static builtin builtins[] = {
     {"exit", Exit},
@@ -18,7 +21,7 @@ static builtin builtins[] = {
     {"pwd", Pwd}
 };
 
-char execBuiltin(char** argv){
+int execBuiltin(char** argv){
     size_t size = sizeof(builtins)/sizeof(builtins[0]);
 
     for (size_t i = 0; i < size; i++) {
@@ -28,7 +31,7 @@ char execBuiltin(char** argv){
         }
     }
 
-    return FAILURE;
+    return EXEC_FAILURE;
 }
 
 static int Exit(char** argv){
@@ -39,32 +42,40 @@ static int Exit(char** argv){
 
     _exit(ret);
     perror("pish: exit"); 
-    return FAILURE;
+    return EXEC_FAILURE;
 }
 
 static int Cd(char** argv) {
+    char* path = NULL;
+
     if (!argv[1]) {
-        chdir(getenv("HOME"));
-    }
-else if (chdir(argv[1]) == -1) {
+        char* tmp = NULL;
+        if ((tmp = getenv("HOME"))) {
+            path = tmp;
+        }
+    } else 
+        path = argv[1];
+
+    if (chdir(path) == -1) {
         perror("pish: cd");
-        return FAILURE;
+        return EXEC_FAILURE;
     }
 
     return SUCCESS;
 }
 
 static int Pwd(char** argv){
-    
     char* buf;
     
     if (!(buf = getcwd(NULL, 0))) {
         perror("pish: pwd");
-        return FAILURE;
+        return EXEC_FAILURE;
     }
 
     write(STDOUT_FILENO, buf, strlen(buf));
     write(STDOUT_FILENO, "\n", 1);
+
+    free(buf);
 
     return SUCCESS;
 }
