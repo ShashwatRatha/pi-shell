@@ -5,19 +5,19 @@
 #include <stddef.h>
 
 typedef struct {
-    char** argv;
-    int instream;
-    int outstream;
+  char **argv;
+  int instream;
+  int outstream;
 } Command;
 
 typedef struct {
-    Command* cmds;
-    size_t count;
+  Command *cmds;
+  size_t count;
 } Commands;
 
 typedef struct {
-    TokenType* delims;
-    size_t count;
+  TokenType *delims;
+  size_t count;
 } Delims;
 
 void freeCommands(Commands);

@@ -4,6 +4,6 @@
 #include "command.h"
 #include "token.h"
 
-int parse(char*, Commands*, Delims*);
+int parse(char *, Commands *, Delims *);
 
 #endif
