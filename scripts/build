@@ -1,3 +1,5 @@
 #/bin/zsh
 
-gcc - o pish src/*.c || clang -o pish src/*.c
+cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && make -C build
+cp build/compile_commands.json ./
+mv build/pish ./

@@ -3,3 +3,5 @@
 pish
 build/
 tests/
+compile_commands.json
+further-work.txt
